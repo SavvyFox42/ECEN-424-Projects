@@ -1,0 +1,11 @@
+JarIndex-Version: 1.0
+
+lwjgl-natives-windows-x86.jar
+META-INF
+META-INF/versions
+META-INF/versions/9
+windows
+windows/x86
+windows/x86/org
+windows/x86/org/lwjgl
+

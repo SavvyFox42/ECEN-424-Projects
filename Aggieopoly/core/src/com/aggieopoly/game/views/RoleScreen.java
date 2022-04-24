@@ -66,7 +66,7 @@ public class RoleScreen implements Screen
 			public void changed(ChangeEvent event, Actor actor) {
 				// TODO Auto-generated method stub
 				Aggieopoly.CLIENT_SERVER = 2;
-				parent.changeScreen(Aggieopoly.GAME_SCREEN);
+				parent.changeScreen(Aggieopoly.CHAT_SCREEN);
 			}
 			
 		});

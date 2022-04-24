@@ -19,6 +19,13 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.*;
+import java.util.HashSet;
+import java.util.Scanner;
+
 public class ChatScreen implements Screen
 {
 	String ipadd = null;
@@ -179,10 +186,141 @@ public class ChatScreen implements Screen
 				{
 					connected = true;
 					// UDP Client Startup
+
+					int clientPort = portadd;
+					String host = "localhost";
+
+					System.out.println("Connected to host " + host + ", on port " + clientPort);
+
+
+					InetAddress ia = null;
+					try {
+						ia = InetAddress.getByName(host);
+					} catch (UnknownHostException e) {
+						e.printStackTrace();
+					}
+
+					Scanner myObj = new Scanner(System.in);
+					System.out.print("Enter username: ");
+
+					String userName = myObj.nextLine();
+					System.out.println("Your username is: " + userName);
+
+					SenderThread sender = null;
+					try {
+						sender = new SenderThread(ia, clientPort, userName);
+					} catch (SocketException e) {
+						e.printStackTrace();
+					}
+					sender.start();
+					ReceiverThread receiver = null;
+					try {
+						receiver = new ReceiverThread(sender.getSocket());
+					} catch (SocketException e) {
+						e.printStackTrace();
+					}
+					receiver.start();
 				}
 				else if (mode == 4)
 				{
 					// UDP Server Startup
+
+					int serverPort = portadd;
+					HashSet<Integer> portSet = new HashSet<Integer>();
+
+					System.out.println("Server launched on port " + serverPort);
+
+
+					DatagramSocket udpServerSocket = null;
+					try {
+						udpServerSocket = new DatagramSocket(serverPort);
+					} catch (SocketException e) {
+						e.printStackTrace();
+					}
+
+					System.out.println("Server is now ready...\n");
+					connect.setDisabled(true);
+					disconnect.setDisabled(false);
+					cd.setText("Connected!");
+					cd.setColor(Color.GREEN);
+
+					while(true)
+					{
+						byte[] receiveData = new byte[1024];
+
+						DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+
+						try {
+							udpServerSocket.receive(receivePacket);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+
+						ByteArrayInputStream bais = new ByteArrayInputStream(receivePacket.getData());
+						DataInputStream dis = new DataInputStream(bais);
+
+						int usernameLen = 0;
+						try {
+							usernameLen = dis.readInt();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						int messageLen = 0;
+						try {
+							messageLen = dis.readInt();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						byte[] userName = new byte[usernameLen];
+						byte[] message = new byte[messageLen];
+						try {
+							dis.read(userName);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						try {
+							dis.read(message);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+
+						String userNameString = (new String(userName)).trim();
+						String clientMessage = (new String(message)).trim();
+						String returnMessage;
+
+						if (clientMessage.equals("CLIENTCONNECTIONSTART")) {
+							System.out.println("Client Connected - Socket Address: " + receivePacket.getSocketAddress());
+							returnMessage = (userNameString + " has joined the chat.");
+						} else if (clientMessage.equals("CLIENTCONNECTIONEND")) {
+							System.out.println("Client Disconnected - Socket Address: " + receivePacket.getSocketAddress());
+							returnMessage = (userNameString + " has left the chat.");
+						} else {
+							returnMessage = (userNameString+ ": " + clientMessage);
+						}
+
+						InetAddress clientIP = receivePacket.getAddress();
+
+						int clientport = receivePacket.getPort();
+						portSet.add(clientport);
+
+						byte[] sendData  = new byte[1024];
+
+						sendData = returnMessage.getBytes();
+
+						for(Integer port : portSet)
+						{
+							if(port != clientport)
+							{
+								DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientIP, port);
+								try {
+									udpServerSocket.send(sendPacket);
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+							}
+						}
+					}
+
 				}
 				else if (mode == 1)
 				{

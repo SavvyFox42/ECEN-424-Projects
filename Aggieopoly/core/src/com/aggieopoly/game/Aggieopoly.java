@@ -1,6 +1,7 @@
 package com.aggieopoly.game;
 
 import com.aggieopoly.game.views.ChatScreen;
+import com.aggieopoly.game.views.GameScreen;
 import com.aggieopoly.game.views.MainScreen;
 import com.aggieopoly.game.views.MethodScreen;
 import com.aggieopoly.game.views.RoleScreen;
@@ -18,6 +19,7 @@ public class Aggieopoly extends Game
 	public final static int TCP_UDP_CHOICE = 2;
 	public final static int CLIENT_SERVER_CHOICE = 3;
 	public final static int CHAT_SCREEN = 4;
+	public final static int GAME_SCREEN = 5;
 	
 	public static int TCP_UDP = 0; 			// 1 = TCP, 2 = UDP
 	public static int CLIENT_SERVER = 0;	// 1 = Server, 2 = Client
@@ -29,6 +31,7 @@ public class Aggieopoly extends Game
 	MethodScreen methodScreen;
 	RoleScreen roleScreen;
 	ChatScreen chatScreen;
+	GameScreen gameScreen;
 	
 	public void changeScreen(int nextScreen)
 	{
@@ -49,6 +52,11 @@ public class Aggieopoly extends Game
 		case CHAT_SCREEN:
 			if (chatScreen == null) chatScreen = new ChatScreen(this);
 			this.setScreen(chatScreen);
+			break;
+		case GAME_SCREEN:
+			if (gameScreen == null) gameScreen = new GameScreen(this);
+			this.setScreen(gameScreen);
+			break;
 		}
 	}
 	

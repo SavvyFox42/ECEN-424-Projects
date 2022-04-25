@@ -29,7 +29,8 @@ import java.util.Scanner;
 public class ChatScreen implements Screen
 {
 	String ipadd = null;
-	int portadd = -1;
+	String username = "Default";
+	int portadd = 123;
 	boolean connected = false;
 	
 	
@@ -41,6 +42,8 @@ public class ChatScreen implements Screen
 	
 	TextField tf1;
 	TextField ip;
+	TextField username_field;
+	Label username_label;
 	
 	TextArea ta;
 	TextField port;
@@ -104,12 +107,16 @@ public class ChatScreen implements Screen
 		mainTable.setFillParent(true);
 		//mainTable.setDebug(true);
 		
-		ta = new TextArea("DDD", skin);
+		ta = new TextArea("", skin);
+		ta.scaleBy(2.0f);
 		Window wind = new Window("Parameters", skin);
 		tf1 = new TextField("Enter Message: ", skin);
 		send = new TextButton("Send", skin);
 		connect = new TextButton("Connect", skin);
 		disconnect = new TextButton("Disconnect", skin);
+		username_label = new Label("Username: ", skin);
+		username_label.setColor(1, 0, 0, 1);
+		username_label.setFontScale(2.0f);
 		Label ipLabel = new Label("IP Address: ", skin);
 		ipLabel.setColor(1, 0, 0, 1);
 		ipLabel.setFontScale(2.0f);
@@ -118,6 +125,7 @@ public class ChatScreen implements Screen
 		portLabel.setFontScale(2.0f);
 		ip = new TextField("xxx.xxx.xxx.xxx", skin);
 		port = new TextField("xxxx", skin);
+		username_field = new TextField("Default Username", skin);
 		cd = new Label("No Connection", skin);
 		cd.setFontScale(4.0f);
 		cd.setColor(Color.BLUE);
@@ -145,6 +153,9 @@ public class ChatScreen implements Screen
 		wind.add(portLabel).padRight(5);
 		wind.add(port);
 		wind.row().pad(15);
+		wind.add(username_label);
+		wind.add(username_field).padLeft(5);
+		wind.row().pad(15);
 		wind.add(connect);
 		wind.row().pad(15);
 		wind.add(disconnect);
@@ -160,7 +171,8 @@ public class ChatScreen implements Screen
 				// Clear the input space
 				if (tf1.getText() != "" )
 				{
-					ta.setText(ta.getText() + "\n" + tf1.getText());
+					parent.sendMessage(tf1.getText(), username);
+					ta.appendText("\n\n" + tf1.getText());
 					tf1.setText("");
 				}
 			}
@@ -171,6 +183,8 @@ public class ChatScreen implements Screen
 			@Override
 			public void changed(ChangeEvent event, Actor actor) {
 				// TODO Auto-generated method stub
+				
+				username = username_field.getText();
 				
 				ipadd = ip.getText();
 				try
@@ -187,140 +201,25 @@ public class ChatScreen implements Screen
 					connected = true;
 					// UDP Client Startup
 
-					int clientPort = portadd;
-					String host = "localhost";
-
-					System.out.println("Connected to host " + host + ", on port " + clientPort);
-
-
-					InetAddress ia = null;
-					try {
-						ia = InetAddress.getByName(host);
-					} catch (UnknownHostException e) {
-						e.printStackTrace();
-					}
-
-					Scanner myObj = new Scanner(System.in);
-					System.out.print("Enter username: ");
-
-					String userName = myObj.nextLine();
-					System.out.println("Your username is: " + userName);
-
-					SenderThread sender = null;
-					try {
-						sender = new SenderThread(ia, clientPort, userName);
-					} catch (SocketException e) {
-						e.printStackTrace();
-					}
-					sender.start();
-					ReceiverThread receiver = null;
-					try {
-						receiver = new ReceiverThread(sender.getSocket());
-					} catch (SocketException e) {
-						e.printStackTrace();
-					}
-					receiver.start();
+					parent.startUDP_Client(ipadd, portadd, username);
+					
+					connect.setDisabled(true);
+					disconnect.setDisabled(false);
+					cd.setText("Connected!");
+					cd.setColor(Color.GREEN);
 				}
 				else if (mode == 4)
 				{
 					// UDP Server Startup
 
-					int serverPort = portadd;
-					HashSet<Integer> portSet = new HashSet<Integer>();
-
-					System.out.println("Server launched on port " + serverPort);
-
-
-					DatagramSocket udpServerSocket = null;
-					try {
-						udpServerSocket = new DatagramSocket(serverPort);
-					} catch (SocketException e) {
-						e.printStackTrace();
-					}
-
-					System.out.println("Server is now ready...\n");
+					parent.startUDP_Server(ipadd, portadd);
+					
 					connect.setDisabled(true);
 					disconnect.setDisabled(false);
 					cd.setText("Connected!");
 					cd.setColor(Color.GREEN);
 
-					while(true)
-					{
-						byte[] receiveData = new byte[1024];
-
-						DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-
-						try {
-							udpServerSocket.receive(receivePacket);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-
-						ByteArrayInputStream bais = new ByteArrayInputStream(receivePacket.getData());
-						DataInputStream dis = new DataInputStream(bais);
-
-						int usernameLen = 0;
-						try {
-							usernameLen = dis.readInt();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-						int messageLen = 0;
-						try {
-							messageLen = dis.readInt();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-						byte[] userName = new byte[usernameLen];
-						byte[] message = new byte[messageLen];
-						try {
-							dis.read(userName);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-						try {
-							dis.read(message);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-
-						String userNameString = (new String(userName)).trim();
-						String clientMessage = (new String(message)).trim();
-						String returnMessage;
-
-						if (clientMessage.equals("CLIENTCONNECTIONSTART")) {
-							System.out.println("Client Connected - Socket Address: " + receivePacket.getSocketAddress());
-							returnMessage = (userNameString + " has joined the chat.");
-						} else if (clientMessage.equals("CLIENTCONNECTIONEND")) {
-							System.out.println("Client Disconnected - Socket Address: " + receivePacket.getSocketAddress());
-							returnMessage = (userNameString + " has left the chat.");
-						} else {
-							returnMessage = (userNameString+ ": " + clientMessage);
-						}
-
-						InetAddress clientIP = receivePacket.getAddress();
-
-						int clientport = receivePacket.getPort();
-						portSet.add(clientport);
-
-						byte[] sendData  = new byte[1024];
-
-						sendData = returnMessage.getBytes();
-
-						for(Integer port : portSet)
-						{
-							if(port != clientport)
-							{
-								DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientIP, port);
-								try {
-									udpServerSocket.send(sendPacket);
-								} catch (IOException e) {
-									e.printStackTrace();
-								}
-							}
-						}
-					}
-
+					
 				}
 				else if (mode == 1)
 				{
@@ -346,6 +245,9 @@ public class ChatScreen implements Screen
 			public void changed(ChangeEvent event, Actor actor) {
 				// TODO Auto-generated method stub
 				// Send the Disconnect Command for either server or client
+				
+				parent.disconnect(username);
+				
 				connected = false;
 						
 				if (connected == false)
@@ -379,6 +281,11 @@ public class ChatScreen implements Screen
 		
 		stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
 		stage.draw();
+		
+		if (parent.NEW_MESSAGE)
+		{
+			ta.appendText("\n\n" + parent.NEW_MESSAGE_TEXT);
+		}
 	}
 
 	@Override
